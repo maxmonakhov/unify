@@ -13,8 +13,6 @@ const Sync = (props: AccountsProps) => {
   const { sdk, safe } = useSafeAppsSDK();
   const [unifyChainClient] = useState(new UnifyChainClient(sdk, safe));
 
-  // const [state, setState] = useState(SystemStatus.OutOfSync);
-
   const addressQuery = useQuery({
     queryKey: ["moduleAddress"],
     queryFn: () => unifyChainClient.getModuleAddress()
@@ -23,8 +21,11 @@ const Sync = (props: AccountsProps) => {
   const systemStatusQuery = useQuery({
     queryKey: ["systemStatus", { mainModuleAddress: addressQuery.data }],
     queryFn: () => unifyChainClient.getSystemStatus(addressQuery.data!),
-    enabled: typeof addressQuery.data === "string"
+    enabled: typeof addressQuery.data === "string",
+    refetchInterval: 2 * 1000
   });
+
+  console.log("--- systemStatusQuery.data", systemStatusQuery.data);
 
   const syncMutation = useMutation({
     mutationFn: (mainModuleAddress: string) => unifyChainClient.sync(mainModuleAddress)
