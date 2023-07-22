@@ -3,7 +3,7 @@ import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import Safe, { EthersAdapter, getCreateCallContract } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { GelatoRelay, TransactionStatusResponse } from "@gelatonetwork/relay-sdk";
-import { MainUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
+import { MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
 import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
@@ -25,6 +25,12 @@ enum TaskState {
   NotFound = "NotFound"
 }
 
+enum SystemStatus {
+  OutOfSync,
+  Pending,
+  Synced,
+}
+
 export class UnifyChainClient {
   private polygonZKVMProvider: ethers.providers.JsonRpcProvider;
   private ethProvider: ethers.providers.JsonRpcProvider;
@@ -43,7 +49,7 @@ export class UnifyChainClient {
     this.safeInfo = safeInfo;
   }
 
-  public async getModuleAddress(safeAddress: string): Promise<string | undefined> {
+  public async getModuleAddress(): Promise<string | undefined> {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
@@ -66,6 +72,51 @@ export class UnifyChainClient {
     }
 
     return moduleAddress;
+  }
+
+  public async getSystemStatus(mainModuleAddress: string): Promise<SystemStatus> {
+    const safe = await Safe.create({
+      ethAdapter: new EthersAdapter({
+        ethers: ethers,
+        signerOrProvider: this.ethProvider,
+      }),
+      safeAddress: this.safeInfo.safeAddress
+    });
+
+    const subModuleAdress = await MainUnifySafeModule__factory.connect(mainModuleAddress, this.ethProvider).polygonZkEVMReceiverModule();
+    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(subModuleAdress, this.polygonZKVMProvider).safe();
+
+    const subAccountSafe = await Safe.create({
+      ethAdapter: new EthersAdapter({
+        ethers: ethers,
+        signerOrProvider: this.polygonZKVMProvider,
+      }),
+      safeAddress: subAccountAddress
+    });
+
+    //TODO: pending
+
+    const subOwners = await subAccountSafe.getOwners();
+    const mainOwners = await safe.getOwners();
+
+    const subThreshold = await subAccountSafe.getThreshold();
+    const mainThreshold = await safe.getThreshold();
+
+    if (subOwners.length != mainOwners.length) {
+      return SystemStatus.OutOfSync;
+    }
+
+    if (subThreshold != mainThreshold) {
+      return SystemStatus.OutOfSync;
+    }
+
+    for (const subOwner of subOwners) {
+      if (!mainOwners.includes(subOwner)) {
+        return SystemStatus.OutOfSync;
+      }
+    }
+
+    return SystemStatus.Synced;
   }
 
   public async installModule(subAccountModuleAddress: string): Promise<void> {
