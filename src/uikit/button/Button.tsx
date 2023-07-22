@@ -9,7 +9,7 @@ const Button = (props: ButtonProps) => {
   return (
     <button
       className={clsx(
-        "rounded-2xl bg-violet px-8 py-[18px] text-[20px] font-semibold text-white transition hover:bg-violetLight",
+        "flex items-center gap-2 rounded-2xl bg-violet px-8 py-[18px] text-[20px] font-semibold text-white transition hover:bg-violetLight disabled:cursor-not-allowed",
         className
       )}
       {...restButtonProps}

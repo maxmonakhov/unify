@@ -1,29 +1,101 @@
-import { memo } from "react";
-import { Step } from "@/uikit/stepper/Stepper";
+import { memo, useState } from "react";
+import { Step } from "uikit";
 import { Button, Label, LogoWithText, Stepper } from "uikit";
-import { useSafeAppsSDK } from "@gnosis.pm/safe-apps-react-sdk";
-import { EtherumIcon } from "@/uikit/icons";
+import { useSafeAppsSDK } from "@safe-global/safe-apps-react-sdk";
+import { EtherumIcon, PolygonIcon } from "@/uikit/icons";
+import { UnifyChainClient } from "@/domains/chain/UnifyChainClient";
+import toast from "react-hot-toast";
+import { useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/uikit/spinner";
 
 type MainProps = {};
 
 const steps: Step[] = [{ name: "Install Unify module" }, { name: "Polygon ZkVM" }];
 
+enum State {
+  Idle = "idle",
+  Loading = "loading"
+}
+
 const Main = (props: MainProps) => {
   const { sdk, safe } = useSafeAppsSDK();
+  const [unifyChainClient] = useState(new UnifyChainClient(sdk, safe));
+  const [step, setStep] = useState(0);
+
+  const createSubAccountMutation = useMutation({
+    mutationFn: () => unifyChainClient.createSubAccount(safe.safeAddress)
+  });
+
+  console.log("--- createSubAccountMutation", createSubAccountMutation);
+
+  const installUnifyModuleMutation = useMutation({
+    mutationFn: () =>
+      unifyChainClient.installModule(
+        safe.safeAddress,
+        createSubAccountMutation.data?.subAccountModuleAddress!
+      )
+  });
+
+  const handleCreateSubAccount = () => {
+    createSubAccountMutation.mutate(undefined, {
+      onError: (e) => {
+        toast.error("Some error happened. See console for details");
+        throw e;
+      },
+      onSuccess: () => setStep(1)
+    });
+  };
+
+  const handleInstallUnifyModule = () => {
+    installUnifyModuleMutation.mutate(undefined, {
+      onError: (e) => {
+        toast.error("Some error happened. See console for details");
+        throw e;
+      },
+      onSuccess: () => setStep(1)
+    });
+  };
 
   return (
     <>
       <LogoWithText className="fixed left-[30px] top-[40px]" />
       <div className="mt-[148px] flex flex-col items-center">
         <Stepper className="max-w-[274px]" activeStepIndex={0} steps={steps} />
-        <Label className="mt-[110px]" text="Ethereum" icon={<EtherumIcon />} />
-        <h1 className="mt-5 text-[24px] font-[600]">Create Polygon ZkVM account</h1>
-        <p className="mt-2 text-center">
-          Welcome to Unify. You can install Unify in one click! Welcome to Unify. <br />
-          You can install Unify in one click!
-        </p>
-        <Button className="mt-10">Create account</Button>
+
+        {step === 0 && (
+          <>
+            <Label className="mt-[110px]" text="Polygon ZKVM" icon={<PolygonIcon />} />
+            <h1 className="mt-5 text-[24px] font-[600]">Create Safe account in Polygon zkEVM</h1>
+            <p className="mt-2 max-w-[600px] text-center">
+              We will create a Sub Account for your Safe in Polygon ZkEVM. It will take no more than
+              10 minutes.
+            </p>
+            <Button
+              disabled={createSubAccountMutation.isLoading}
+              onClick={handleCreateSubAccount}
+              className="mt-10"
+            >
+              {createSubAccountMutation.isLoading && <Spinner />}Create sub account
+            </Button>
+          </>
+        )}
+        {step === 1 && (
+          <>
+            <Label className="mt-[110px]" text="Ethereum " icon={<EtherumIcon />} />
+            <h1 className="mt-5 text-[24px] font-[600]">Install Unify module for Safe</h1>
+            <p className="mt-2 max-w-[600px] text-center">
+              Now you need to install the module in your Safe to create a link between your
+              accounts.
+            </p>
+            <Button
+              disabled={installUnifyModuleMutation.isLoading}
+              onClick={handleInstallUnifyModule}
+              className="mt-10"
+            >
+              {installUnifyModuleMutation.isLoading && <Spinner />}Install
+            </Button>
+          </>
+        )}
       </div>
     </>
   );

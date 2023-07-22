@@ -1,7 +1,12 @@
-import { Main } from "features";
-import Accounts from "@/features/accounts/Accounts";
+import { useRouter } from "next/router";
 
-export default function Home() {
+export default function Index() {
+  const { push } = useRouter();
+
+  setTimeout(() => {
+    void push("install");
+  }, 3000);
+
   // return <Main />;
-  return <Accounts />;
+  return <p>Checking status...</p>;
 }
