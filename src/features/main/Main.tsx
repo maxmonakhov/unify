@@ -112,16 +112,11 @@ const Main = (props: MainProps) => {
             <Label className="mt-[110px]" text="Ethereum " icon={<EtherumIcon />} />
             <h1 className="mt-5 text-[24px] font-[600]">Success 🚀</h1>
             <p className="mt-2 max-w-[600px] text-center">
-              Now you need to install the module in your Safe to create a link between your
-              accounts.
+              Your installation has loaded successfully!
             </p>
-            <Button
-              disabled={installUnifyModuleMutation.isLoading}
-              onClick={handleInstallUnifyModule}
-              className="mt-10"
-            >
-              {installUnifyModuleMutation.isLoading && <Spinner />} Install
-            </Button>
+            <a href="./finish">
+              <Button className="mt-10">Finish</Button>
+            </a>
           </>
         )}
       </div>

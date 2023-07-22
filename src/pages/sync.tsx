@@ -1,4 +1,4 @@
-import Accounts from "@/features/accounts/Accounts";
+import Accounts from "@/features/sync/Sync";
 
 export default function Sync() {
   return <Accounts />;

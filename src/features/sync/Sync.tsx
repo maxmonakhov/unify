@@ -1,30 +1,29 @@
 import { memo, useState } from "react";
 import { Button, Details, LogoWithText } from "uikit";
 import { Spinner } from "@/uikit/spinner";
+import { SystemStatus } from "@/domains/chain/UnifyChainClient";
 
 type AccountsProps = {};
 
-enum State {
-  OutOfSync = "OutOfSync",
-  Pending = "Pending",
-  Synchronized = "Synchronized"
-}
+const Sync = (props: AccountsProps) => {
+  const [state, setState] = useState(SystemStatus.OutOfSync);
 
-const Accounts = (props: AccountsProps) => {
-  const [state, setState] = useState(State.Synchronized);
+  const handleSync = () => {};
 
   return (
     <>
       <LogoWithText className="fixed left-[30px] top-[40px]" />
       <div className="flex flex-1 flex-col items-center justify-center">
-        {state === State.OutOfSync && (
+        {state === SystemStatus.OutOfSync && (
           <>
             <h1 className="text-[24px] font-[600]">Out of sync</h1>
             <p className="mt-1">Your accounts are not sync. Please, synchronize your accounts.</p>
-            <Button className="mt-10">Sync</Button>
+            <Button onClick={handleSync} className="mt-10">
+              Sync
+            </Button>
           </>
         )}
-        {state === State.Pending && (
+        {state === SystemStatus.Pending && (
           <>
             <div className="flex-c flex items-center gap-2">
               <Spinner className="h-6 w-6" />
@@ -36,7 +35,7 @@ const Accounts = (props: AccountsProps) => {
             </p>
           </>
         )}
-        {state === State.Synchronized && (
+        {state === SystemStatus.Synced && (
           <>
             <h1 className="text-[24px] font-[600]">Synchronized</h1>
             <p className="mt-1">
@@ -50,4 +49,4 @@ const Accounts = (props: AccountsProps) => {
   );
 };
 
-export default memo(Accounts);
+export default memo(Sync);
