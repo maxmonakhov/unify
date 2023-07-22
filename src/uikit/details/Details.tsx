@@ -1,4 +1,6 @@
 import { memo, PropsWithChildren, useState } from "react";
+import { ArrowIcon } from "@/uikit/icons";
+import clsx from "clsx";
 
 type DetailsProps = PropsWithChildren & {
   className?: string;
@@ -16,9 +18,9 @@ const Details = (props: DetailsProps) => {
 
   return (
     <div className={className}>
-      <div>
-        <button onClick={handleClick}>Details </button>
-      </div>
+      <button className="flex items-center gap-2.5 text-violet" onClick={handleClick}>
+        Details <ArrowIcon className={clsx("transition", { "rotate-180": state === "expanded" })} />
+      </button>
       {state === "expanded" && children}
     </div>
   );
