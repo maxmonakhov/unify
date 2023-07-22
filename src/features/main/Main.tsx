@@ -10,29 +10,21 @@ import { Spinner } from "@/uikit/spinner";
 
 type MainProps = {};
 
-const steps: Step[] = [{ name: "Install Unify module" }, { name: "Polygon ZkVM" }];
-
-enum State {
-  Idle = "idle",
-  Loading = "loading"
-}
+const steps: Step[] = [{ name: "Install Unify module" }, { name: "Polygon zkEVM" }];
 
 const Main = (props: MainProps) => {
   const { sdk, safe } = useSafeAppsSDK();
   const [unifyChainClient] = useState(new UnifyChainClient(sdk, safe));
+
   const [step, setStep] = useState(0);
 
   const createSubAccountMutation = useMutation({
     mutationFn: () => unifyChainClient.createSubAccount()
   });
 
-  console.log("--- createSubAccountMutation", createSubAccountMutation);
-
   const installUnifyModuleMutation = useMutation({
     mutationFn: () =>
-      unifyChainClient.installModule(
-        createSubAccountMutation.data?.subAccountModuleAddress!
-      )
+      unifyChainClient.installModule(createSubAccountMutation.data?.subAccountModuleAddress!)
   });
 
   const handleCreateSubAccount = () => {
@@ -41,7 +33,10 @@ const Main = (props: MainProps) => {
         toast.error("Some error happened. See console for details");
         console.error(e);
       },
-      onSuccess: () => setStep(1)
+      onSuccess: () => {
+        toast.success("Sub account successfully created!");
+        setStep(1);
+      }
     });
   };
 
@@ -51,7 +46,9 @@ const Main = (props: MainProps) => {
         toast.error("Some error happened. See console for details");
         console.error(e);
       },
-      onSuccess: () => setStep(1)
+      onSuccess: () => {
+        toast.success("Unify successfully installed!");
+      }
     });
   };
 
@@ -59,11 +56,11 @@ const Main = (props: MainProps) => {
     <>
       <LogoWithText className="fixed left-[30px] top-[40px]" />
       <div className="mt-[148px] flex flex-col items-center">
-        <Stepper className="max-w-[274px]" activeStepIndex={0} steps={steps} />
+        <Stepper className="max-w-[274px]" activeStepIndex={step} steps={steps} />
 
         {step === 0 && (
           <>
-            <Label className="mt-[110px]" text="Polygon ZKVM" icon={<PolygonIcon />} />
+            <Label className="mt-[110px]" text="Polygon zkEVM" icon={<PolygonIcon />} />
             <h1 className="mt-5 text-[24px] font-[600]">Create Safe account in Polygon zkEVM</h1>
             <p className="mt-2 max-w-[600px] text-center">
               We will create a Sub Account for your Safe in Polygon ZkEVM. It will take no more than
@@ -74,7 +71,7 @@ const Main = (props: MainProps) => {
               onClick={handleCreateSubAccount}
               className="mt-10"
             >
-              {createSubAccountMutation.isLoading && <Spinner />}Create sub account
+              {createSubAccountMutation.isLoading && <Spinner />} Create sub account
             </Button>
           </>
         )}
@@ -91,7 +88,7 @@ const Main = (props: MainProps) => {
               onClick={handleInstallUnifyModule}
               className="mt-10"
             >
-              {installUnifyModuleMutation.isLoading && <Spinner />}Install
+              {installUnifyModuleMutation.isLoading && <Spinner />} Install
             </Button>
           </>
         )}
