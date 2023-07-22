@@ -3,6 +3,7 @@ import { Step } from "@/uikit/stepper/Stepper";
 import { Button, Label, LogoWithText, Stepper } from "uikit";
 import { useSafeAppsSDK } from "@gnosis.pm/safe-apps-react-sdk";
 import { EtherumIcon } from "@/uikit/icons";
+import { Spinner } from "@/uikit/spinner";
 
 type MainProps = {};
 
