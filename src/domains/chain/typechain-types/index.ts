@@ -26,6 +26,8 @@ export type { GnosisSafe } from "./@gnosis.pm/safe-contracts/contracts/GnosisSaf
 export { GnosisSafe__factory } from "./factories/@gnosis.pm/safe-contracts/contracts/GnosisSafe__factory";
 export type { ISignatureValidator } from "./@gnosis.pm/safe-contracts/contracts/interfaces/ISignatureValidator";
 export { ISignatureValidator__factory } from "./factories/@gnosis.pm/safe-contracts/contracts/interfaces/ISignatureValidator__factory";
+export type { CreateCall } from "./@gnosis.pm/safe-contracts/contracts/libraries/CreateCall";
+export { CreateCall__factory } from "./factories/@gnosis.pm/safe-contracts/contracts/libraries/CreateCall__factory";
 export type { GnosisSafeProxy } from "./@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxy.sol/GnosisSafeProxy";
 export { GnosisSafeProxy__factory } from "./factories/@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxy.sol/GnosisSafeProxy__factory";
 export type { IProxy } from "./@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxy.sol/IProxy";

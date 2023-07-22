@@ -7,6 +7,8 @@ import type * as common from "./common";
 export type { common };
 import type * as interfaces from "./interfaces";
 export type { interfaces };
+import type * as libraries from "./libraries";
+export type { libraries };
 import type * as proxies from "./proxies";
 export type { proxies };
 export type { GnosisSafe } from "./GnosisSafe";

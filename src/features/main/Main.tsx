@@ -24,13 +24,12 @@ const Main = (props: MainProps) => {
   const [step, setStep] = useState(0);
 
   const createSubAccountMutation = useMutation({
-    mutationFn: () => unifyChainClient.createSubAccount(safe.safeAddress)
+    mutationFn: () => unifyChainClient.createSubAccount()
   });
 
   const installUnifyModuleMutation = useMutation({
     mutationFn: () =>
       unifyChainClient.installModule(
-        safe.safeAddress,
         createSubAccountMutation.data?.subAccountModuleAddress!
       )
   });

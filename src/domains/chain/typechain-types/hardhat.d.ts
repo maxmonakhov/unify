@@ -49,6 +49,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ISignatureValidator__factory>;
     getContractFactory(
+      name: "CreateCall",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.CreateCall__factory>;
+    getContractFactory(
       name: "GnosisSafeProxy",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.GnosisSafeProxy__factory>;
@@ -146,6 +150,11 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.ISignatureValidator>;
+    getContractAt(
+      name: "CreateCall",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.CreateCall>;
     getContractAt(
       name: "GnosisSafeProxy",
       address: string,
