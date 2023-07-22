@@ -147,7 +147,7 @@ export class UnifyChainClient {
     let subAccountModuleAddress;
     let subAccountAddress;
 
-    const pzkEVMTx = await this.ethProvider.getTransactionReceipt(relayerTx!.transactionHash!);
+    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(relayerTx!.transactionHash!);
 
     const deployedTopic = UniversalFactory__factory.createInterface().getEventTopic("Deployed");
     pzkEVMTx.logs.map((log) => {
