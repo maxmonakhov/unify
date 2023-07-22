@@ -12,7 +12,11 @@ import type {
   Signer,
   utils,
 } from "ethers";
-import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type {
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
 import type { Listener, Provider } from "@ethersproject/providers";
 import type {
   TypedEventFilter,
@@ -66,8 +70,25 @@ export interface MainUnifySafeModuleInterface extends utils.Interface {
     data: BytesLike
   ): Result;
 
-  events: {};
+  events: {
+    "MainUnifySafeModuleDeployed(address)": EventFragment;
+  };
+
+  getEvent(
+    nameOrSignatureOrTopic: "MainUnifySafeModuleDeployed"
+  ): EventFragment;
 }
+
+export interface MainUnifySafeModuleDeployedEventObject {
+  thisAddress: string;
+}
+export type MainUnifySafeModuleDeployedEvent = TypedEvent<
+  [string],
+  MainUnifySafeModuleDeployedEventObject
+>;
+
+export type MainUnifySafeModuleDeployedEventFilter =
+  TypedEventFilter<MainUnifySafeModuleDeployedEvent>;
 
 export interface MainUnifySafeModule extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
@@ -127,7 +148,14 @@ export interface MainUnifySafeModule extends BaseContract {
     upgradeSettings(overrides?: CallOverrides): Promise<void>;
   };
 
-  filters: {};
+  filters: {
+    "MainUnifySafeModuleDeployed(address)"(
+      thisAddress?: null
+    ): MainUnifySafeModuleDeployedEventFilter;
+    MainUnifySafeModuleDeployed(
+      thisAddress?: null
+    ): MainUnifySafeModuleDeployedEventFilter;
+  };
 
   estimateGas: {
     polygonZkEVMBridge(overrides?: CallOverrides): Promise<BigNumber>;

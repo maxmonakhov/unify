@@ -39,7 +39,7 @@ type SystemStatus = {
   polygonZKVM: Info,
 }
 
-enum Status {
+export enum Status {
   OutOfSync,
   Pending,
   Synced,
@@ -72,19 +72,21 @@ export class UnifyChainClient {
       safeAddress: this.safeInfo.safeAddress
     });
     const modules = await safe.getModules();
+    console.log(modules);
 
     let moduleAddress = undefined;
     for (const safeModule of modules) {
       try {
         moduleAddress = await MainUnifySafeModule__factory.connect(safeModule, this.ethProvider).polygonZkEVMReceiverModule();
         if (moduleAddress != undefined && moduleAddress != ethers.constants.AddressZero) {
-          return;
+          break;
         }
       } catch (e) {
         continue;
       }
     }
 
+    console.log(moduleAddress);
     return moduleAddress;
   }
 
@@ -186,9 +188,7 @@ export class UnifyChainClient {
     const { data } = new MainUnifySafeModule__factory().getDeployTransaction(this.safeInfo.safeAddress, POLYGONZK_BRIDGE, subAccountModuleAddress)
 
 
-    const enableModuleTx = await safe.createEnableModuleTx(subAccountModuleAddress);
-
-    const txs = await this.sdk.txs.send({
+    const firstTxs = await this.sdk.txs.send({
       txs: [
         {
           to: "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
@@ -197,7 +197,28 @@ export class UnifyChainClient {
             "0",
             data!
           )).data!
-        },
+        }
+      ]
+    });
+
+    await this._waitSafeTx(firstTxs.safeTxHash);
+
+    const firstTxsInfo = await this.sdk.txs.getBySafeTxHash(firstTxs.safeTxHash);
+
+    console.log(firstTxsInfo);
+    const createModuleTx = await this.ethProvider.getTransactionReceipt(firstTxsInfo.txHash!);
+
+    let moduleAddress;
+    createModuleTx.logs.map((log) => {
+      if (log.topics[0] === MainUnifySafeModule__factory.createInterface().getEventTopic("MainUnifySafeModuleDeployed")) {
+        const parsedLog = MainUnifySafeModule__factory.createInterface().parseLog(log);
+        moduleAddress = parsedLog.args[0];
+      }
+    });
+
+    const enableModuleTx = await safe.createEnableModuleTx(moduleAddress!);
+    const txs = await this.sdk.txs.send({
+      txs: [
         {
           to: enableModuleTx.data.to,
           value: "0",
@@ -299,7 +320,7 @@ export class UnifyChainClient {
           case "FAILED":
             throw new Error("Safe tx failed");
           case "AWAITING_CONFIRMATIONS":
-            console.log("Waiting for confirmations");
+            break;
           case "SUCCESS":
             return;
         }
