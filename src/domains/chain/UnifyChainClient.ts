@@ -3,13 +3,7 @@ import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import Safe, { EthersAdapter, getCreateCallContract } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { GelatoRelay, TransactionStatusResponse } from "@gelatonetwork/relay-sdk";
-import {
-  GnosisSafe__factory,
-  IPolygonZkEVMBridge__factory,
-  MainUnifySafeModule__factory,
-  PZkVMReceiverUnifySafeModule__factory,
-  UniversalFactory__factory
-} from "./typechain-types";
+import { GnosisSafe__factory, IPolygonZkEVMBridge__factory, MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
 import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
@@ -20,6 +14,28 @@ const ETHEREUM_RPC = "https://rpc.ankr.com/eth_goerli";
 const POLYGONZK_FACTORY = "0x7Ea090bd1E7165dCE45FF4510DcbB97EE87038e9";
 const GELATO_RELAY_PZKEVM_KEY = "ZDw0hoNePTDvLNnastgVmz5iXYDiLjQEyJqWMT07vjE_"; //TODO: to env
 const POLYGONZK_BRIDGE = "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7";
+
+interface PolygonBridgeResponse {
+  deposits: Deposit[]
+  total_cnt: string
+}
+
+export interface Deposit {
+  leaf_type: number
+  orig_net: number
+  orig_addr: string
+  amount: string
+  dest_net: number
+  dest_addr: string
+  block_num: string
+  deposit_cnt: string
+  network_id: number
+  tx_hash: string
+  claim_tx_hash: string
+  metadata: string
+  ready_for_claim: boolean
+}
+
 
 enum TaskState {
   CheckPending = "CheckPending",
@@ -37,18 +53,18 @@ type Info = {
   owners: string[];
   threshold: number;
   module: string;
-};
+}
 
-export type SystemStatus = {
+type SystemStatus = {
   status: Status;
-  ethereum: Info;
-  polygonZKVM: Info;
-};
+  ethereum: Info,
+  polygonZKVM: Info,
+}
 
 export enum Status {
   OutOfSync,
   Pending,
-  Synced
+  Synced,
 }
 
 export class UnifyChainClient {
@@ -73,7 +89,7 @@ export class UnifyChainClient {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
@@ -82,10 +98,7 @@ export class UnifyChainClient {
     let moduleAddress = undefined;
     for (const safeModule of modules) {
       try {
-        await MainUnifySafeModule__factory.connect(
-          safeModule,
-          this.ethProvider
-        ).polygonZkEVMReceiverModule();
+        await MainUnifySafeModule__factory.connect(safeModule, this.ethProvider).polygonZkEVMReceiverModule();
 
         moduleAddress = safeModule;
         if (moduleAddress != undefined && moduleAddress != ethers.constants.AddressZero) {
@@ -103,34 +116,15 @@ export class UnifyChainClient {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
 
-    const subModuleAddress = await MainUnifySafeModule__factory.connect(
-      mainModuleAddress,
-      this.ethProvider
-    ).polygonZkEVMReceiverModule();
-    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(
-      subModuleAddress,
-      this.polygonZKVMProvider
-    ).safe();
+    const subModuleAddress = await MainUnifySafeModule__factory.connect(mainModuleAddress, this.ethProvider).polygonZkEVMReceiverModule();
+    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(subModuleAddress, this.polygonZKVMProvider).safe();
 
-    const subAccountSafe = await GnosisSafe__factory.connect(
-      subAccountAddress,
-      this.polygonZKVMProvider
-    );
-
-    //TODO: pending
-    /*
-        const zkBridgeResponse = await axios.get(`https://bridge-api.zkevm-rpc.com/${subModuleAddress}`);
-        if (zkBridgeResponse.status == 200) {
-          if (zkBridgeResponse.data.status == "pending") {
-            return SystemStatus.Pending;
-          }
-        }
-    */
+    const subAccountSafe = await GnosisSafe__factory.connect(subAccountAddress, this.polygonZKVMProvider);
 
     const subOwners = await subAccountSafe.getOwners();
     const mainOwners = await safe.getOwners();
@@ -153,6 +147,52 @@ export class UnifyChainClient {
         module: subModuleAddress
       }
     };
+
+    const zkBridgeResponse = await axios.get(`https://bridge-api.public.zkevm-test.net/bridges/${subModuleAddress}`);
+
+    if (zkBridgeResponse.status == 200) {
+      const polygonBridgeResponse: PolygonBridgeResponse = zkBridgeResponse.data;
+
+      for (const deposit of polygonBridgeResponse.deposits) {
+        if (!deposit.ready_for_claim) {
+          continue;
+        }
+
+        const proofAxios = await axios.get(`https://bridge-api.public.zkevm-test.net/merkle-proof`, {
+          params: { deposit_cnt: deposit.deposit_cnt, net_id: deposit.orig_net },
+        });
+
+        const { proof } = proofAxios.data;
+        const claimTx = await IPolygonZkEVMBridge__factory.connect(POLYGONZK_BRIDGE, this.polygonZKVMProvider).populateTransaction.claimMessage(
+          proof.merkle_proof,
+          deposit.deposit_cnt,
+          proof.main_exit_root,
+          proof.rollup_exit_root,
+          deposit.orig_net,
+          deposit.orig_addr,
+          deposit.dest_net,
+          deposit.dest_addr,
+          deposit.amount,
+          deposit.metadata,
+        );
+
+        const pzkEVMRelayResponse = await this.gelatoRelay.sponsoredCall(
+          {
+            chainId: 1442,
+            target: POLYGONZK_BRIDGE,
+            data: claimTx.data!
+          },
+          GELATO_RELAY_PZKEVM_KEY
+        );
+
+        await this._waitTask(pzkEVMRelayResponse.taskId);
+      }
+
+      if (polygonBridgeResponse.deposits.length > 0) {
+        systemStatus.status = Status.Pending;
+        return systemStatus;
+      }
+    }
 
     if (subOwners.length != mainOwners.length) {
       systemStatus.status = Status.OutOfSync;
@@ -192,28 +232,23 @@ export class UnifyChainClient {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
 
-    const { data } = new MainUnifySafeModule__factory().getDeployTransaction(
-      this.safeInfo.safeAddress,
-      POLYGONZK_BRIDGE,
-      subAccountModuleAddress
-    );
+    const { data } = new MainUnifySafeModule__factory().getDeployTransaction(this.safeInfo.safeAddress, POLYGONZK_BRIDGE, subAccountModuleAddress)
+
 
     const firstTxs = await this.sdk.txs.send({
       txs: [
         {
           to: "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
           value: "0",
-          data: (
-            await CreateCall__factory.connect(
-              "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
-              this.ethProvider
-            ).populateTransaction.performCreate("0", data!)
-          ).data!
+          data: (await CreateCall__factory.connect("0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4", this.ethProvider).populateTransaction.performCreate(
+            "0",
+            data!
+          )).data!
         }
       ]
     });
@@ -227,10 +262,7 @@ export class UnifyChainClient {
 
     let moduleAddress;
     createModuleTx.logs.map((log) => {
-      if (
-        log.topics[0] ===
-        MainUnifySafeModule__factory.createInterface().getEventTopic("MainUnifySafeModuleDeployed")
-      ) {
+      if (log.topics[0] === MainUnifySafeModule__factory.createInterface().getEventTopic("MainUnifySafeModuleDeployed")) {
         const parsedLog = MainUnifySafeModule__factory.createInterface().parseLog(log);
         moduleAddress = parsedLog.args[0];
       }
@@ -242,7 +274,7 @@ export class UnifyChainClient {
         {
           to: enableModuleTx.data.to,
           value: "0",
-          data: enableModuleTx.data.data
+          data: enableModuleTx.data.data,
         }
       ]
     });
@@ -257,7 +289,7 @@ export class UnifyChainClient {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
@@ -284,9 +316,7 @@ export class UnifyChainClient {
     let subAccountAddress;
 
     const relayerTx = await this._waitTask(pzkEVMRelayResponse.taskId);
-    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(
-      relayerTx!.transactionHash!
-    );
+    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(relayerTx!.transactionHash!);
 
     const deployedTopic = UniversalFactory__factory.createInterface().getEventTopic("Deployed");
     pzkEVMTx.logs.map((log) => {
@@ -347,7 +377,8 @@ export class UnifyChainClient {
             return;
         }
         await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (e) {}
+      } catch (e) {
+      }
     }
   }
 }
