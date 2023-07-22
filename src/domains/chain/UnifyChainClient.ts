@@ -7,6 +7,7 @@ import { MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, Un
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
 import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
+import axios from "axios";
 
 const POLYGONZK_RPC = "https://rpc.public.zkevm-test.net";
 const ETHEREUM_RPC = "https://rpc.ankr.com/eth_goerli";
@@ -25,7 +26,19 @@ enum TaskState {
   NotFound = "NotFound"
 }
 
-enum SystemStatus {
+type Info = {
+  safeAddress: string;
+  owners: string[];
+  threshold: number;
+}
+
+type SystemStatus = {
+  status: Status;
+  ethereum: Info,
+  polygonZKVM: Info,
+}
+
+enum Status {
   OutOfSync,
   Pending,
   Synced,
@@ -83,8 +96,8 @@ export class UnifyChainClient {
       safeAddress: this.safeInfo.safeAddress
     });
 
-    const subModuleAdress = await MainUnifySafeModule__factory.connect(mainModuleAddress, this.ethProvider).polygonZkEVMReceiverModule();
-    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(subModuleAdress, this.polygonZKVMProvider).safe();
+    const subModuleAddress = await MainUnifySafeModule__factory.connect(mainModuleAddress, this.ethProvider).polygonZkEVMReceiverModule();
+    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(subModuleAddress, this.polygonZKVMProvider).safe();
 
     const subAccountSafe = await Safe.create({
       ethAdapter: new EthersAdapter({
@@ -95,6 +108,15 @@ export class UnifyChainClient {
     });
 
     //TODO: pending
+/*
+    const zkBridgeResponse = await axios.get(`https://bridge-api.zkevm-rpc.com/${subModuleAddress}`);
+    if (zkBridgeResponse.status == 200) {
+      if (zkBridgeResponse.data.status == "pending") {
+        return SystemStatus.Pending;
+      }
+    }
+*/
+
 
     const subOwners = await subAccountSafe.getOwners();
     const mainOwners = await safe.getOwners();
@@ -102,21 +124,33 @@ export class UnifyChainClient {
     const subThreshold = await subAccountSafe.getThreshold();
     const mainThreshold = await safe.getThreshold();
 
-    if (subOwners.length != mainOwners.length) {
-      return SystemStatus.OutOfSync;
-    }
+    const systemStatus: SystemStatus = {
+      status: Status.Synced,
+      ethereum: {
+        safeAddress: this.safeInfo.safeAddress,
+        owners: mainOwners,
+        threshold: mainThreshold
+      },
+      polygonZKVM: {
+        safeAddress: subAccountAddress,
+        owners: subOwners,
+        threshold: subThreshold
+      }
+    };
 
-    if (subThreshold != mainThreshold) {
-      return SystemStatus.OutOfSync;
+    if (subOwners.length != mainOwners.length) {
+      systemStatus.status = Status.OutOfSync;
+    } else if (subThreshold != mainThreshold) {
+      systemStatus.status = Status.OutOfSync;
     }
 
     for (const subOwner of subOwners) {
       if (!mainOwners.includes(subOwner)) {
-        return SystemStatus.OutOfSync;
+        systemStatus.status = Status.OutOfSync;
       }
     }
 
-    return SystemStatus.Synced;
+    return systemStatus;
   }
 
   public async installModule(subAccountModuleAddress: string): Promise<void> {
