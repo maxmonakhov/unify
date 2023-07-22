@@ -12,11 +12,7 @@ const Sync = (props: AccountsProps) => {
 
   const [state, setState] = useState(Status.OutOfSync);
   const handleSync = async () => {
-    console.log("start syncing");
 
-    const mainModule = await unifyChainClient.getModuleAddress();
-    await unifyChainClient.sync(mainModule!);
-    console.log("end syncing");
   };
 
   return (
