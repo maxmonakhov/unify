@@ -55,12 +55,11 @@ const Main = (props: MainProps) => {
           emojis: ["🦄"]
         });
 
-        queueMicrotask(() => toast.success("Unify successfully installed!", { duration: 5000 }));
-
-        setTimeout(() => {
-          void jsConfetti.addConfetti({
+        setTimeout(async () => {
+          await jsConfetti.addConfetti({
             emojis: ["🦄"]
           });
+          setTimeout(() => toast.success("Unify successfully installed!", { duration: 5000 }), 300);
         }, 1000);
       }
     });

@@ -1,5 +1,5 @@
-import Accounts from "@/features/sync/Sync";
+import { Sync } from "features";
 
-export default function Sync() {
-  return <Accounts />;
+export default function SyncPage() {
+  return <Sync />;
 }
