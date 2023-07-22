@@ -25,15 +25,6 @@ enum TaskState {
 }
 
 export class UnifyChainClient {
-  private static instance: UnifyChainClient;
-
-  private static getInstance(sdk: SafeAppsSDK, safeInfo: SafeInfo): UnifyChainClient {
-    if (!UnifyChainClient.instance) {
-      UnifyChainClient.instance = new UnifyChainClient(sdk, safeInfo);
-    }
-    return UnifyChainClient.instance;
-  }
-
   private polygonZKVMProvider: ethers.providers.JsonRpcProvider;
   private ethProvider: ethers.providers.JsonRpcProvider;
   private gelatoRelay: GelatoRelay;
@@ -50,12 +41,13 @@ export class UnifyChainClient {
   }
 
   public async getModuleAddress(safeAddress: string): Promise<string | undefined> {
+    const signer = await this.safeProvider.getSigner();
     const safe = await Safe.create({
         ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: await this.safeProvider.getSigner(),
+        signerOrProvider: signer,
       }),
-      safeAddress: safeAddress,
+      safeAddress: await signer.getAddress(),
     });
     const modules = await safe.getModules();
 
@@ -74,35 +66,40 @@ export class UnifyChainClient {
     return moduleAddress;
   }
 
-  public async installModule(safeAddress: string, subAccountModuleAddress: string): Promise<void> {
+  public async installModule(subAccountModuleAddress: string): Promise<void> {
+   const signer = await this.safeProvider.getSigner();
     const safe = await Safe.create({
-      ethAdapter: new EthersAdapter({
+        ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: await this.safeProvider.getSigner()
+        signerOrProvider: signer,
       }),
-      safeAddress: safeAddress
+      safeAddress: await signer.getAddress(),
     });
+
+    const safeAddress = await safe.getAddress();
 
     const mainModule = await new MainUnifySafeModule__factory(
       await this.safeProvider.getSigner()
     ).deploy(safeAddress, "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7", subAccountModuleAddress);
 
+    console.log("safe address: ", safeAddress);
     const tx = await safe.createEnableModuleTx(mainModule.address);
 
     await safe.signTransaction(tx);
     await safe.executeTransaction(tx);
   }
 
-  public async createSubAccount(safeAddress: string): Promise<{
+  public async createSubAccount(): Promise<{
     subAccountAddress: string;
     subAccountModuleAddress: string;
   }> {
+    const signer = await this.safeProvider.getSigner();
     const safe = await Safe.create({
-      ethAdapter: new EthersAdapter({
+        ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: signer,
       }),
-      safeAddress: safeAddress
+      safeAddress: await signer.getAddress(),
     });
 
     const { data } = await UniversalFactory__factory.connect(

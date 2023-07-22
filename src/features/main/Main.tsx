@@ -23,7 +23,7 @@ const Main = (props: MainProps) => {
   const [step, setStep] = useState(0);
 
   const createSubAccountMutation = useMutation({
-    mutationFn: () => unifyChainClient.createSubAccount(safe.safeAddress)
+    mutationFn: () => unifyChainClient.createSubAccount()
   });
 
   console.log("--- createSubAccountMutation", createSubAccountMutation);
