@@ -138,7 +138,7 @@ export class UnifyChainClient {
         {
           to: "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
           value: "0",
-          data: (await CreateCall__factory.connect( "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4", this.ethProvider).populateTransaction.performCreate(
+          data: (await CreateCall__factory.connect("0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4", this.ethProvider).populateTransaction.performCreate(
             "0",
             data!
           )).data!
@@ -151,7 +151,11 @@ export class UnifyChainClient {
       ]
     });
 
-    await this.ethProvider.waitForTransaction(txs.safeTxHash);
+    console.log(txs);
+    const details = await this.sdk.txs.getBySafeTxHash(txs.safeTxHash);
+
+    details.txStatus
+    await this._waitSafeTx(txs.safeTxHash);
   }
 
   public async createSubAccount(): Promise<{
@@ -229,5 +233,28 @@ export class UnifyChainClient {
     }
 
     return relayerTx!;
+  }
+
+  private async _waitSafeTx(txHash: string): Promise<void> {
+    let tx;
+
+    while (true) {
+      try {
+        tx = await this.sdk.txs.getBySafeTxHash(txHash);
+        switch (tx.txStatus) {
+          case "AWAITING_EXECUTION":
+            break;
+          case "CANCELLED":
+          case "FAILED":
+            throw new Error("Safe tx failed");
+          case "AWAITING_CONFIRMATIONS":
+            console.log("Waiting for confirmations");
+          case "SUCCESS":
+            return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } catch (e) {
+      }
+    }
   }
 }
