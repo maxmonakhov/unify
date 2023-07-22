@@ -39,7 +39,9 @@ const Accounts = (props: AccountsProps) => {
         {state === State.Synchronized && (
           <>
             <h1 className="text-[24px] font-[600]">Synchronized</h1>
-            <p className="mt-1">Your account has been synced. You don't have to do anything.</p>
+            <p className="mt-1">
+              Your account has been synced. You don&apos;t have to do anything.
+            </p>
             <Details className="mt-10">details here ..</Details>
           </>
         )}
