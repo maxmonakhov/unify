@@ -12,11 +12,6 @@ type MainProps = {};
 
 const steps: Step[] = [{ name: "Install Unify module" }, { name: "Polygon zkEVM" }];
 
-enum State {
-  Idle = "idle",
-  Loading = "loading"
-}
-
 const Main = (props: MainProps) => {
   const { sdk, safe } = useSafeAppsSDK();
   const [unifyChainClient] = useState(new UnifyChainClient(sdk, safe));
@@ -29,9 +24,7 @@ const Main = (props: MainProps) => {
 
   const installUnifyModuleMutation = useMutation({
     mutationFn: () =>
-      unifyChainClient.installModule(
-        createSubAccountMutation.data?.subAccountModuleAddress!
-      )
+      unifyChainClient.installModule(createSubAccountMutation.data?.subAccountModuleAddress!)
   });
 
   const handleCreateSubAccount = () => {
