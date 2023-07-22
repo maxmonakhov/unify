@@ -3,7 +3,7 @@ import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import Safe, { EthersAdapter, getCreateCallContract } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { GelatoRelay, TransactionStatusResponse } from "@gelatonetwork/relay-sdk";
-import { MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
+import { IPolygonZkEVMBridge__factory, MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
 import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
@@ -30,6 +30,7 @@ type Info = {
   safeAddress: string;
   owners: string[];
   threshold: number;
+  module: string;
 }
 
 type SystemStatus = {
@@ -108,15 +109,14 @@ export class UnifyChainClient {
     });
 
     //TODO: pending
-/*
-    const zkBridgeResponse = await axios.get(`https://bridge-api.zkevm-rpc.com/${subModuleAddress}`);
-    if (zkBridgeResponse.status == 200) {
-      if (zkBridgeResponse.data.status == "pending") {
-        return SystemStatus.Pending;
-      }
-    }
-*/
-
+    /*
+        const zkBridgeResponse = await axios.get(`https://bridge-api.zkevm-rpc.com/${subModuleAddress}`);
+        if (zkBridgeResponse.status == 200) {
+          if (zkBridgeResponse.data.status == "pending") {
+            return SystemStatus.Pending;
+          }
+        }
+    */
 
     const subOwners = await subAccountSafe.getOwners();
     const mainOwners = await safe.getOwners();
@@ -129,12 +129,14 @@ export class UnifyChainClient {
       ethereum: {
         safeAddress: this.safeInfo.safeAddress,
         owners: mainOwners,
-        threshold: mainThreshold
+        threshold: mainThreshold,
+        module: mainModuleAddress
       },
       polygonZKVM: {
         safeAddress: subAccountAddress,
         owners: subOwners,
-        threshold: subThreshold
+        threshold: subThreshold,
+        module: subModuleAddress
       }
     };
 
@@ -151,6 +153,25 @@ export class UnifyChainClient {
     }
 
     return systemStatus;
+  }
+
+  public async sync(mainModuleAddress: string): Promise<void> {
+    const { data } = await MainUnifySafeModule__factory.connect(
+      mainModuleAddress,
+      this.ethProvider
+    ).populateTransaction.upgradeSettings();
+
+    const txs = await this.sdk.txs.send({
+      txs: [
+        {
+          to: mainModuleAddress,
+          value: "0",
+          data: data!
+        }
+      ]
+    });
+
+    await this._waitSafeTx(txs.safeTxHash);
   }
 
   public async installModule(subAccountModuleAddress: string): Promise<void> {
@@ -185,10 +206,6 @@ export class UnifyChainClient {
       ]
     });
 
-    console.log(txs);
-    const details = await this.sdk.txs.getBySafeTxHash(txs.safeTxHash);
-
-    details.txStatus
     await this._waitSafeTx(txs.safeTxHash);
   }
 
