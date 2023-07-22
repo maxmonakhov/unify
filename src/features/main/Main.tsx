@@ -7,6 +7,7 @@ import { UnifyChainClient } from "@/domains/chain/UnifyChainClient";
 import toast from "react-hot-toast";
 import { useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/uikit/spinner";
+import JSConfetti from "js-confetti";
 
 type MainProps = {};
 
@@ -47,7 +48,20 @@ const Main = (props: MainProps) => {
         console.error(e);
       },
       onSuccess: () => {
-        toast.success("Unify successfully installed!");
+        const jsConfetti = new JSConfetti();
+        setStep(2);
+
+        void jsConfetti.addConfetti({
+          emojis: ["🦄"]
+        });
+
+        queueMicrotask(() => toast.success("Unify successfully installed!", { duration: 5000 }));
+
+        setTimeout(() => {
+          void jsConfetti.addConfetti({
+            emojis: ["🦄"]
+          });
+        }, 1000);
       }
     });
   };
@@ -79,6 +93,24 @@ const Main = (props: MainProps) => {
           <>
             <Label className="mt-[110px]" text="Ethereum " icon={<EtherumIcon />} />
             <h1 className="mt-5 text-[24px] font-[600]">Install Unify module for Safe</h1>
+            <p className="mt-2 max-w-[600px] text-center">
+              Now you need to install the module in your Safe to create a link between your
+              accounts.
+            </p>
+            <Button
+              disabled={installUnifyModuleMutation.isLoading}
+              onClick={handleInstallUnifyModule}
+              className="mt-10"
+            >
+              {installUnifyModuleMutation.isLoading && <Spinner />} Install
+            </Button>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <Label className="mt-[110px]" text="Ethereum " icon={<EtherumIcon />} />
+            <h1 className="mt-5 text-[24px] font-[600]">Success 🚀</h1>
             <p className="mt-2 max-w-[600px] text-center">
               Now you need to install the module in your Safe to create a link between your
               accounts.
