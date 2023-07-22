@@ -9,13 +9,14 @@ export type Step = {
 type StepperProps = {
   steps: Step[];
   activeStepIndex: number;
+  className?: string;
 };
 
 const Stepper = (props: StepperProps) => {
-  const { steps, activeStepIndex } = props;
+  const { steps, activeStepIndex, className } = props;
 
   return (
-    <div className="flex w-full items-center justify-between gap-2">
+    <div className={clsx("flex w-full items-center justify-between gap-2", className)}>
       {steps.map((step, index) => {
         const { name } = step;
 
