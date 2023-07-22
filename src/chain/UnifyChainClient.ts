@@ -50,11 +50,6 @@ export class UnifyChainClient {
     this.safeProvider = new ethers.providers.Web3Provider(new SafeAppProvider(safe, sdk));
   }
 
-  public async getSystemStatus(): Promise<string | undefined> {
-
-
-  }
-
   public async getModuleAddress(safeAddress: string): Promise<string | undefined> {
     const safe = await Safe.create({
         ethAdapter: new EthersAdapter({
