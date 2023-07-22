@@ -3,14 +3,11 @@ import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import Safe, { EthersAdapter, getCreateCallContract } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { GelatoRelay, TransactionStatusResponse } from "@gelatonetwork/relay-sdk";
-import {
-  MainUnifySafeModule__factory,
-  PZkVMReceiverUnifySafeModule__factory,
-  UniversalFactory__factory
-} from "./typechain-types";
+import { IPolygonZkEVMBridge__factory, MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
 import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
+import axios from "axios";
 
 const POLYGONZK_RPC = "https://rpc.public.zkevm-test.net";
 const ETHEREUM_RPC = "https://rpc.ankr.com/eth_goerli";
@@ -29,10 +26,23 @@ enum TaskState {
   NotFound = "NotFound"
 }
 
-export enum SystemStatus {
+type Info = {
+  safeAddress: string;
+  owners: string[];
+  threshold: number;
+  module: string;
+}
+
+type SystemStatus = {
+  status: Status;
+  ethereum: Info,
+  polygonZKVM: Info,
+}
+
+enum Status {
   OutOfSync,
   Pending,
-  Synced
+  Synced,
 }
 
 export class UnifyChainClient {
@@ -53,16 +63,11 @@ export class UnifyChainClient {
     this.safeInfo = safeInfo;
   }
 
-  /**
-   * @returns `undefined` if unify module hasn't been installed yet.
-   * Returns `string` if Unify module was already installed.
-   *
-   */
   public async getModuleAddress(): Promise<string | undefined> {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
@@ -71,10 +76,7 @@ export class UnifyChainClient {
     let moduleAddress = undefined;
     for (const safeModule of modules) {
       try {
-        moduleAddress = await MainUnifySafeModule__factory.connect(
-          safeModule,
-          this.ethProvider
-        ).polygonZkEVMReceiverModule();
+        moduleAddress = await MainUnifySafeModule__factory.connect(safeModule, this.ethProvider).polygonZkEVMReceiverModule();
         if (moduleAddress != undefined && moduleAddress != ethers.constants.AddressZero) {
           return;
         }
@@ -90,29 +92,31 @@ export class UnifyChainClient {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
 
-    const subModuleAdress = await MainUnifySafeModule__factory.connect(
-      mainModuleAddress,
-      this.ethProvider
-    ).polygonZkEVMReceiverModule();
-    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(
-      subModuleAdress,
-      this.polygonZKVMProvider
-    ).safe();
+    const subModuleAddress = await MainUnifySafeModule__factory.connect(mainModuleAddress, this.ethProvider).polygonZkEVMReceiverModule();
+    const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(subModuleAddress, this.polygonZKVMProvider).safe();
 
     const subAccountSafe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.polygonZKVMProvider
+        signerOrProvider: this.polygonZKVMProvider,
       }),
       safeAddress: subAccountAddress
     });
 
     //TODO: pending
+    /*
+        const zkBridgeResponse = await axios.get(`https://bridge-api.zkevm-rpc.com/${subModuleAddress}`);
+        if (zkBridgeResponse.status == 200) {
+          if (zkBridgeResponse.data.status == "pending") {
+            return SystemStatus.Pending;
+          }
+        }
+    */
 
     const subOwners = await subAccountSafe.getOwners();
     const mainOwners = await safe.getOwners();
@@ -120,37 +124,67 @@ export class UnifyChainClient {
     const subThreshold = await subAccountSafe.getThreshold();
     const mainThreshold = await safe.getThreshold();
 
-    if (subOwners.length != mainOwners.length) {
-      return SystemStatus.OutOfSync;
-    }
+    const systemStatus: SystemStatus = {
+      status: Status.Synced,
+      ethereum: {
+        safeAddress: this.safeInfo.safeAddress,
+        owners: mainOwners,
+        threshold: mainThreshold,
+        module: mainModuleAddress
+      },
+      polygonZKVM: {
+        safeAddress: subAccountAddress,
+        owners: subOwners,
+        threshold: subThreshold,
+        module: subModuleAddress
+      }
+    };
 
-    if (subThreshold != mainThreshold) {
-      return SystemStatus.OutOfSync;
+    if (subOwners.length != mainOwners.length) {
+      systemStatus.status = Status.OutOfSync;
+    } else if (subThreshold != mainThreshold) {
+      systemStatus.status = Status.OutOfSync;
     }
 
     for (const subOwner of subOwners) {
       if (!mainOwners.includes(subOwner)) {
-        return SystemStatus.OutOfSync;
+        systemStatus.status = Status.OutOfSync;
       }
     }
 
-    return SystemStatus.Synced;
+    return systemStatus;
+  }
+
+  public async sync(mainModuleAddress: string): Promise<void> {
+    const { data } = await MainUnifySafeModule__factory.connect(
+      mainModuleAddress,
+      this.ethProvider
+    ).populateTransaction.upgradeSettings();
+
+    const txs = await this.sdk.txs.send({
+      txs: [
+        {
+          to: mainModuleAddress,
+          value: "0",
+          data: data!
+        }
+      ]
+    });
+
+    await this._waitSafeTx(txs.safeTxHash);
   }
 
   public async installModule(subAccountModuleAddress: string): Promise<void> {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
 
-    const { data } = new MainUnifySafeModule__factory().getDeployTransaction(
-      this.safeInfo.safeAddress,
-      POLYGONZK_BRIDGE,
-      subAccountModuleAddress
-    );
+    const { data } = new MainUnifySafeModule__factory().getDeployTransaction(this.safeInfo.safeAddress, POLYGONZK_BRIDGE, subAccountModuleAddress)
+
 
     const enableModuleTx = await safe.createEnableModuleTx(subAccountModuleAddress);
 
@@ -159,25 +193,19 @@ export class UnifyChainClient {
         {
           to: "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
           value: "0",
-          data: (
-            await CreateCall__factory.connect(
-              "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
-              this.ethProvider
-            ).populateTransaction.performCreate("0", data!)
-          ).data!
+          data: (await CreateCall__factory.connect("0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4", this.ethProvider).populateTransaction.performCreate(
+            "0",
+            data!
+          )).data!
         },
         {
           to: enableModuleTx.data.to,
           value: "0",
-          data: enableModuleTx.data.data
+          data: enableModuleTx.data.data,
         }
       ]
     });
 
-    console.log(txs);
-    const details = await this.sdk.txs.getBySafeTxHash(txs.safeTxHash);
-
-    details.txStatus;
     await this._waitSafeTx(txs.safeTxHash);
   }
 
@@ -188,7 +216,7 @@ export class UnifyChainClient {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
-        signerOrProvider: this.ethProvider
+        signerOrProvider: this.ethProvider,
       }),
       safeAddress: this.safeInfo.safeAddress
     });
@@ -215,9 +243,7 @@ export class UnifyChainClient {
     let subAccountAddress;
 
     const relayerTx = await this._waitTask(pzkEVMRelayResponse.taskId);
-    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(
-      relayerTx!.transactionHash!
-    );
+    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(relayerTx!.transactionHash!);
 
     const deployedTopic = UniversalFactory__factory.createInterface().getEventTopic("Deployed");
     pzkEVMTx.logs.map((log) => {
@@ -278,7 +304,8 @@ export class UnifyChainClient {
             return;
         }
         await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (e) {}
+      } catch (e) {
+      }
     }
   }
 }

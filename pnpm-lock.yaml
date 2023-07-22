@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 dependencies:
   '@gelatonetwork/relay-sdk':
     specifier: ^4.0.0
@@ -37,6 +41,9 @@ dependencies:
   autoprefixer:
     specifier: 10.4.14
     version: 10.4.14(postcss@8.4.27)
+  axios:
+    specifier: ^1.4.0
+    version: 1.4.0
   clsx:
     specifier: ^2.0.0
     version: 2.0.0
