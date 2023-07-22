@@ -40,7 +40,7 @@ const Main = (props: MainProps) => {
     createSubAccountMutation.mutate(undefined, {
       onError: (e) => {
         toast.error("Some error happened. See console for details");
-        throw e;
+        console.error(e);
       },
       onSuccess: () => setStep(1)
     });
@@ -50,7 +50,7 @@ const Main = (props: MainProps) => {
     installUnifyModuleMutation.mutate(undefined, {
       onError: (e) => {
         toast.error("Some error happened. See console for details");
-        throw e;
+        console.error(e);
       },
       onSuccess: () => setStep(1)
     });
