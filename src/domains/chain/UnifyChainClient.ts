@@ -3,7 +3,7 @@ import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import Safe, { EthersAdapter, getCreateCallContract } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { GelatoRelay, TransactionStatusResponse } from "@gelatonetwork/relay-sdk";
-import { IPolygonZkEVMBridge__factory, MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
+import { GnosisSafe__factory, IPolygonZkEVMBridge__factory, MainUnifySafeModule__factory, PZkVMReceiverUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
 import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
@@ -72,12 +72,13 @@ export class UnifyChainClient {
       safeAddress: this.safeInfo.safeAddress
     });
     const modules = await safe.getModules();
-    console.log(modules);
 
     let moduleAddress = undefined;
     for (const safeModule of modules) {
       try {
-        moduleAddress = await MainUnifySafeModule__factory.connect(safeModule, this.ethProvider).polygonZkEVMReceiverModule();
+        await MainUnifySafeModule__factory.connect(safeModule, this.ethProvider).polygonZkEVMReceiverModule();
+
+        moduleAddress = safeModule;
         if (moduleAddress != undefined && moduleAddress != ethers.constants.AddressZero) {
           break;
         }
@@ -86,7 +87,6 @@ export class UnifyChainClient {
       }
     }
 
-    console.log(moduleAddress);
     return moduleAddress;
   }
 
@@ -102,13 +102,7 @@ export class UnifyChainClient {
     const subModuleAddress = await MainUnifySafeModule__factory.connect(mainModuleAddress, this.ethProvider).polygonZkEVMReceiverModule();
     const subAccountAddress = await PZkVMReceiverUnifySafeModule__factory.connect(subModuleAddress, this.polygonZKVMProvider).safe();
 
-    const subAccountSafe = await Safe.create({
-      ethAdapter: new EthersAdapter({
-        ethers: ethers,
-        signerOrProvider: this.polygonZKVMProvider,
-      }),
-      safeAddress: subAccountAddress
-    });
+    const subAccountSafe = await GnosisSafe__factory.connect(subAccountAddress, this.polygonZKVMProvider);
 
     //TODO: pending
     /*
@@ -119,6 +113,7 @@ export class UnifyChainClient {
           }
         }
     */
+
 
     const subOwners = await subAccountSafe.getOwners();
     const mainOwners = await safe.getOwners();
@@ -137,14 +132,14 @@ export class UnifyChainClient {
       polygonZKVM: {
         safeAddress: subAccountAddress,
         owners: subOwners,
-        threshold: subThreshold,
+        threshold: subThreshold.toNumber(),
         module: subModuleAddress
       }
     };
 
     if (subOwners.length != mainOwners.length) {
       systemStatus.status = Status.OutOfSync;
-    } else if (subThreshold != mainThreshold) {
+    } else if (subThreshold.toNumber() != mainThreshold) {
       systemStatus.status = Status.OutOfSync;
     }
 

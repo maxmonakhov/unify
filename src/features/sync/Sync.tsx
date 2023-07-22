@@ -1,14 +1,23 @@
 import { memo, useState } from "react";
 import { Button, Details, LogoWithText } from "uikit";
 import { Spinner } from "@/uikit/spinner";
-import { Status } from "@/domains/chain/UnifyChainClient";
+import { Status, UnifyChainClient } from "@/domains/chain/UnifyChainClient";
+import { useSafeAppsSDK } from "@safe-global/safe-apps-react-sdk";
 
 type AccountsProps = {};
 
 const Sync = (props: AccountsProps) => {
-  const [state, setState] = useState(Status.OutOfSync);
+  const { sdk, safe } = useSafeAppsSDK();
+  const [unifyChainClient] = useState(new UnifyChainClient(sdk, safe));
 
-  const handleSync = () => {};
+  const [state, setState] = useState(Status.OutOfSync);
+  const handleSync = async () => {
+    console.log("start syncing");
+
+    const mainModule = await unifyChainClient.getModuleAddress();
+    await unifyChainClient.sync(mainModule!);
+    console.log("end syncing");
+  };
 
   return (
     <>
