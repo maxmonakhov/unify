@@ -1,11 +1,12 @@
 import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 
-import Safe, { EthersAdapter } from "@safe-global/protocol-kit";
+import Safe, { EthersAdapter, getCreateCallContract } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
-import { GelatoRelay } from "@gelatonetwork/relay-sdk";
+import { GelatoRelay, TransactionStatusResponse } from "@gelatonetwork/relay-sdk";
 import { MainUnifySafeModule__factory, UniversalFactory__factory } from "./typechain-types";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
 import { SafeInfo } from "@safe-global/safe-apps-sdk";
+import { CreateCall__factory } from "./typechain-types/factories/@gnosis.pm/safe-contracts/contracts/libraries";
 
 const POLYGONZK_RPC = "https://rpc.public.zkevm-test.net";
 const ETHEREUM_RPC = "https://rpc.ankr.com/eth_goerli";
@@ -76,34 +77,30 @@ export class UnifyChainClient {
       safeAddress: this.safeInfo.safeAddress
     });
 
-    const data = MainUnifySafeModule__factory.createInterface().encodeDeploy([this.safeInfo.safeAddress, POLYGONZK_BRIDGE, subAccountModuleAddress])
+    const { data } = new MainUnifySafeModule__factory().getDeployTransaction(this.safeInfo.safeAddress, POLYGONZK_BRIDGE, subAccountModuleAddress)
 
-    const createModuleTx = await safe.createTransaction({
-      safeTransactionData: {
-        to: ethers.constants.AddressZero,
-        value: "0",
-        data: data,
-        operation: 0,
-        gasToken: ethers.constants.AddressZero,
-        refundReceiver: ethers.constants.AddressZero
-      }
-    });
 
-    const txs = this.sdk.txs.send({
+    const enableModuleTx = await safe.createEnableModuleTx(subAccountModuleAddress);
+
+    const txs = await this.sdk.txs.send({
       txs: [
         {
-          to: ethers.constants.AddressZero,
+          to: "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4",
           value: "0",
-          data: data
+          data: (await CreateCall__factory.connect( "0x7cbB62EaA69F79e6873cD1ecB2392971036cFAa4", this.ethProvider).populateTransaction.performCreate(
+            "0",
+            data!
+          )).data!
+        },
+        {
+          to: enableModuleTx.data.to,
+          value: "0",
+          data: enableModuleTx.data.data,
         }
       ]
     });
 
-return;
-    const createEnableModuleTx = await safe.createEnableModuleTx(subAccountModuleAddress);
-
-    await safe.signTransaction(createEnableModuleTx);
-    await safe.executeTransaction(createEnableModuleTx);
+    await this.ethProvider.waitForTransaction(txs.safeTxHash);
   }
 
   public async createSubAccount(): Promise<{
@@ -136,9 +133,32 @@ return;
       GELATO_RELAY_PZKEVM_KEY
     );
 
+    let subAccountModuleAddress;
+    let subAccountAddress;
+
+    const relayerTx = await this._waitTask(pzkEVMRelayResponse.taskId);
+    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(relayerTx!.transactionHash!);
+
+    const deployedTopic = UniversalFactory__factory.createInterface().getEventTopic("Deployed");
+    pzkEVMTx.logs.map((log) => {
+      if (log.topics[0] === deployedTopic) {
+        const parsedLog = UniversalFactory__factory.createInterface().parseLog(log);
+
+        subAccountAddress = parsedLog.args[0];
+        subAccountModuleAddress = parsedLog.args[1];
+      }
+    });
+
+    return {
+      subAccountAddress: subAccountAddress!,
+      subAccountModuleAddress: subAccountModuleAddress!
+    };
+  }
+
+  private async _waitTask(taskId: string): Promise<TransactionStatusResponse> {
     let relayerTx;
     while (true) {
-      relayerTx = await this.gelatoRelay.getTaskStatus(pzkEVMRelayResponse.taskId);
+      relayerTx = await this.gelatoRelay.getTaskStatus(taskId);
 
       const taskStatus = String(relayerTx!.taskState);
       if (taskStatus === TaskState.ExecSuccess || taskStatus === TaskState.WaitingForConfirmation) {
@@ -157,24 +177,6 @@ return;
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    let subAccountModuleAddress;
-    let subAccountAddress;
-
-    const pzkEVMTx = await this.polygonZKVMProvider.getTransactionReceipt(relayerTx!.transactionHash!);
-
-    const deployedTopic = UniversalFactory__factory.createInterface().getEventTopic("Deployed");
-    pzkEVMTx.logs.map((log) => {
-      if (log.topics[0] === deployedTopic) {
-        const parsedLog = UniversalFactory__factory.createInterface().parseLog(log);
-
-        subAccountAddress = parsedLog.args[0];
-        subAccountModuleAddress = parsedLog.args[1];
-      }
-    });
-
-    return {
-      subAccountAddress: subAccountAddress!,
-      subAccountModuleAddress: subAccountModuleAddress!
-    };
+    return relayerTx!;
   }
 }

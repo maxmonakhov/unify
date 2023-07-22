@@ -31,7 +31,6 @@ const Main = (props: MainProps) => {
   const installUnifyModuleMutation = useMutation({
     mutationFn: () =>
       unifyChainClient.installModule(
-        safe.safeAddress,
         createSubAccountMutation.data?.subAccountModuleAddress!
       )
   });
