@@ -49,6 +49,31 @@ export class UnifyChainClient {
     this.safeProvider = new ethers.providers.Web3Provider(new SafeAppProvider(safe, sdk));
   }
 
+  public async getModuleAddress(safeAddress: string): Promise<string | undefined> {
+    const safe = await Safe.create({
+        ethAdapter: new EthersAdapter({
+        ethers: ethers,
+        signerOrProvider: await this.safeProvider.getSigner(),
+      }),
+      safeAddress: safeAddress,
+    });
+    const modules = await safe.getModules();
+
+    let moduleAddress = undefined;
+    for (const safeModule of modules) {
+      try {
+        moduleAddress = await MainUnifySafeModule__factory.connect(safeModule, this.ethProvider).polygonZkEVMReceiverModule();
+        if (moduleAddress != undefined && moduleAddress != ethers.constants.AddressZero) {
+          return;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    return moduleAddress;
+  }
+
   public async installModule(safeAddress: string, subAccountModuleAddress: string): Promise<void> {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
