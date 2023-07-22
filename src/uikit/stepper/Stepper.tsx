@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { Fragment, memo } from "react";
 import clsx from "clsx";
 
 export type Step = {
@@ -20,9 +20,8 @@ const Stepper = (props: StepperProps) => {
         const { name } = step;
 
         return (
-          <>
+          <Fragment key={name}>
             <div
-              key={name}
               className={clsx("relative h-4 w-4 rounded-full border border-solid ", {
                 "border-violet": index <= activeStepIndex,
                 "bg-violet": index < activeStepIndex
@@ -43,7 +42,7 @@ const Stepper = (props: StepperProps) => {
                 })}
               ></div>
             )}
-          </>
+          </Fragment>
         );
       })}
     </div>

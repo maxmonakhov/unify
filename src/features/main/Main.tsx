@@ -1,16 +1,19 @@
 import { memo } from "react";
 import { Step } from "@/uikit/stepper/Stepper";
 import { Button, LogoWithText, Stepper } from "uikit";
+import { useSafeAppsSDK } from "@gnosis.pm/safe-apps-react-sdk";
 
 type MainProps = {};
 
+const steps: Step[] = [
+  { name: "Install Unify module" },
+  { name: "Polygon ZkVM" },
+  { name: "Polygon ZkVM" },
+  { name: "Mantle" }
+];
+
 const Main = (props: MainProps) => {
-  const steps: Step[] = [
-    { name: "Install Unify module" },
-    { name: "Polygon ZkVM" },
-    { name: "Polygon ZkVM" },
-    { name: "Mantle" }
-  ];
+  const { sdk, safe } = useSafeAppsSDK();
 
   return (
     <>

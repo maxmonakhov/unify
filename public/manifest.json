@@ -1,0 +1,12 @@
+{
+  "short_name": "Unify Safe App",
+  "name": "Unify Safe App",
+  "description": "Change Safe data on all chains at once",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
