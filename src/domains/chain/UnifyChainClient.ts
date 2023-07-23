@@ -78,6 +78,7 @@ export class UnifyChainClient {
   private gelatoRelay: GelatoRelay;
   private sdk: SafeAppsSDK;
   private safeInfo: SafeInfo;
+  private safe: Promise<Safe>;
 
   constructor(sdk: SafeAppsSDK, safeInfo: SafeInfo) {
     this.polygonZKVMProvider = new ethers.providers.JsonRpcProvider(POLYGONZK_RPC);
@@ -88,17 +89,19 @@ export class UnifyChainClient {
 
     this.sdk = sdk;
     this.safeInfo = safeInfo;
-  }
 
-  public async getModuleAddress(): Promise<string | undefined> {
-    const safe = await Safe.create({
+    this.safe = Safe.create({
       ethAdapter: new EthersAdapter({
         ethers: ethers,
         signerOrProvider: this.ethProvider
       }),
       safeAddress: this.safeInfo.safeAddress
     });
-    const modules = await safe.getModules();
+  }
+
+  public async getModuleAddress(): Promise<string | undefined> {
+
+    const modules = await (await this.safe).getModules();
 
     let moduleAddress = undefined;
     for (const safeModule of modules) {
@@ -121,13 +124,7 @@ export class UnifyChainClient {
   }
 
   public async getSystemStatus(mainModuleAddress: string): Promise<SystemStatus> {
-    const safe = await Safe.create({
-      ethAdapter: new EthersAdapter({
-        ethers: ethers,
-        signerOrProvider: this.ethProvider
-      }),
-      safeAddress: this.safeInfo.safeAddress
-    });
+    console.log("getSystemStatus", mainModuleAddress)
 
     const subModuleAddress = await MainUnifySafeModule__factory.connect(
       mainModuleAddress,
@@ -144,10 +141,10 @@ export class UnifyChainClient {
     );
 
     const subOwners = await subAccountSafe.getOwners();
-    const mainOwners = await safe.getOwners();
+    const mainOwners = await (await this.safe).getOwners();
 
     const subThreshold = await subAccountSafe.getThreshold();
-    const mainThreshold = await safe.getThreshold();
+    const mainThreshold = await (await this.safe).getThreshold();
 
     const systemStatus: SystemStatus = {
       status: Status.Synced,
@@ -169,14 +166,13 @@ export class UnifyChainClient {
       `https://bridge-api.public.zkevm-test.net/bridges/${subModuleAddress}`
     );
 
+    console.log(zkBridgeResponse);
+
     if (zkBridgeResponse.status == 200) {
       const polygonBridgeResponse: PolygonBridgeResponse = zkBridgeResponse.data;
 
-      for (const deposit of polygonBridgeResponse.deposits) {
-        if (!deposit.ready_for_claim) {
-          continue;
-        }
-
+      const deposits = polygonBridgeResponse.deposits.filter(x=> x.ready_for_claim && x.claim_tx_hash === "");
+      for (const deposit of deposits) {
         const proofAxios = await axios.get(
           `https://bridge-api.public.zkevm-test.net/merkle-proof`,
           {
@@ -213,7 +209,7 @@ export class UnifyChainClient {
         await this._waitTask(pzkEVMRelayResponse.taskId);
       }
 
-      if (polygonBridgeResponse.deposits.length > 0) {
+      if (deposits.length > 0) {
         systemStatus.status = Status.Pending;
         return systemStatus;
       }
@@ -254,14 +250,6 @@ export class UnifyChainClient {
   }
 
   public async installModule(subAccountModuleAddress: string): Promise<void> {
-    const safe = await Safe.create({
-      ethAdapter: new EthersAdapter({
-        ethers: ethers,
-        signerOrProvider: this.ethProvider
-      }),
-      safeAddress: this.safeInfo.safeAddress
-    });
-
     const { data } = new MainUnifySafeModule__factory().getDeployTransaction(
       this.safeInfo.safeAddress,
       POLYGONZK_BRIDGE,
@@ -301,7 +289,7 @@ export class UnifyChainClient {
       }
     });
 
-    const enableModuleTx = await safe.createEnableModuleTx(moduleAddress!);
+    const enableModuleTx = await (await this.safe).createEnableModuleTx(moduleAddress!);
     const txs = await this.sdk.txs.send({
       txs: [
         {
@@ -388,7 +376,7 @@ export class UnifyChainClient {
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await this.delay(5000);
     }
 
     return relayerTx!;
@@ -407,12 +395,18 @@ export class UnifyChainClient {
           case "FAILED":
             throw new Error("Safe tx failed");
           case "AWAITING_CONFIRMATIONS":
+            console.log("Awaiting confirmations");
             break;
           case "SUCCESS":
             return;
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        await this.delay(5000);
       } catch (e) {}
     }
+  }
+
+  delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
