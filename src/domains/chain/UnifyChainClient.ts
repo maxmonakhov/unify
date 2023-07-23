@@ -171,8 +171,11 @@ export class UnifyChainClient {
     if (zkBridgeResponse.status == 200) {
       const polygonBridgeResponse: PolygonBridgeResponse = zkBridgeResponse.data;
 
-      const deposits = polygonBridgeResponse.deposits.filter(x=> x.ready_for_claim && x.claim_tx_hash === "");
+      const deposits = polygonBridgeResponse.deposits.filter(x=> x.claim_tx_hash == "");
       for (const deposit of deposits) {
+        if (!deposit.ready_for_claim) {
+          continue;
+        }
         const proofAxios = await axios.get(
           `https://bridge-api.public.zkevm-test.net/merkle-proof`,
           {
