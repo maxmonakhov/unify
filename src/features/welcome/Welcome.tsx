@@ -46,8 +46,7 @@ const Welcome = (props: WelcomeProps) => {
     <div className="flex flex-1 flex-col items-center justify-center">
       <LogoWithText />
       <p className="mt-5 max-w-[600px] text-center">
-        Welcome to Unify. You can install Unify in one click! Welcome to Unify. You can install
-        Unify in one click!
+        Welcome to Unify. Unify will make your existing AA for cross-chain. You can install Unify in one click!
       </p>
 
       <div className="mt-10">
