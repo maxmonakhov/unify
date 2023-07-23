@@ -11,7 +11,7 @@ import JSConfetti from "js-confetti";
 
 type MainProps = {};
 
-const steps: Step[] = [{ name: "Install Unify module" }, { name: "Polygon zkEVM" }];
+const steps: Step[] = [{ name: "Polygon zkEVM" }, { name: "Install Unify module" }];
 
 const Main = (props: MainProps) => {
   const { sdk, safe } = useSafeAppsSDK();
