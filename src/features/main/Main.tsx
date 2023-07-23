@@ -60,7 +60,7 @@ const Main = (props: MainProps) => {
             emojis: ["🦄"]
           });
           setTimeout(() => toast.success("Unify successfully installed!", { duration: 5000 }), 300);
-        }, 1000);
+        }, 400);
       }
     });
   };
@@ -113,7 +113,7 @@ const Main = (props: MainProps) => {
             <p className="mt-2 max-w-[600px] text-center">
               Your installation has loaded successfully!
             </p>
-            <a href="./finish">
+            <a href="https://app.safe.global/welcome">
               <Button className="mt-10">Finish</Button>
             </a>
           </>

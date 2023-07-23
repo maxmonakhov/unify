@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, ReactNode, useState } from "react";
 import { Button, Details, LogoWithText } from "uikit";
 import { Spinner } from "@/uikit/spinner";
 import { Status, SystemStatus, UnifyChainClient } from "@/domains/chain/UnifyChainClient";
@@ -45,7 +45,9 @@ const Sync = (props: AccountsProps) => {
         console.error(e);
       },
       onSuccess: () => {
-        toast.success("Synced successfully!");
+        toast.success("Synchronization transaction sent. Please, wait for updates ~ 8 min", {
+          duration: 6000
+        });
         systemStatusQuery.refetch();
       }
     });
@@ -54,7 +56,7 @@ const Sync = (props: AccountsProps) => {
   return (
     <>
       <LogoWithText className="fixed left-[30px] top-[40px]" />
-      <div className="flex flex-1 flex-col items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center p-12">
         {!systemStatusQuery.data ? (
           <div className="flex flex-col items-center">
             <Spinner />
@@ -63,7 +65,9 @@ const Sync = (props: AccountsProps) => {
         ) : systemStatusQuery.data.status === Status.OutOfSync ? (
           <>
             <h1 className="text-[24px] font-[600]">Out of sync</h1>
-            <p className="mt-1">Your accounts are not sync. Please, synchronize your accounts.</p>
+            <p className="mt-1 max-w-[600px] text-center">
+              Your accounts are not sync. Please, synchronize your accounts.
+            </p>
             <Button disabled={syncMutation.isLoading} onClick={handleSync} className="mt-10">
               {syncMutation.isLoading && <Spinner />} Sync
             </Button>
@@ -88,8 +92,8 @@ const Sync = (props: AccountsProps) => {
         ) : (
           <>
             <h1 className="text-[24px] font-[600]">Synchronized</h1>
-            <p className="mt-1">
-              Your account has been synced. You don&apos;t have to do anything.
+            <p className="mt-1 max-w-[600px] text-center">
+              Your account has been synced. You don&apos;t need to do anything.
             </p>
             <Details className="mt-10">
               <Table data={systemStatusQuery.data} />
@@ -101,18 +105,49 @@ const Sync = (props: AccountsProps) => {
   );
 };
 
-function shortenAddress(address: string | undefined) {
-  if (!address) return address;
+function shortenAddress(address: string) {
+  if (address.length < 5) return address;
 
   const prefix = address.slice(0, 5);
   const suffix = address.slice(-5);
+
   return `${prefix}...${suffix}`;
 }
 
 type TableProps = { data: SystemStatus };
 
-const Table = (props: TableProps) => {
+// eslint-disable-next-line react/display-name
+const Table = memo((props: TableProps) => {
   const { data } = props;
+
+  const ethereumOwners = [...data.ethereum.owners];
+  ethereumOwners.sort();
+
+  const polygonZKVMOwners = [...data.polygonZKVM.owners];
+  polygonZKVMOwners.sort();
+
+  const rowsCount = Math.max(ethereumOwners.length, polygonZKVMOwners.length);
+
+  function getRows() {
+    const rows: ReactNode[] = [];
+
+    for (let i = 0; i < rowsCount; i++) {
+      const row = (
+        <tr key={ethereumOwners[i]}>
+          <td className="border border-slate-300  px-8 py-[18px]">
+            {ethereumOwners[i] && shortenAddress(ethereumOwners[i])}
+          </td>
+          <td className="border border-slate-300  px-8 py-[18px]">
+            {polygonZKVMOwners[i] && shortenAddress(polygonZKVMOwners[i])}
+          </td>
+        </tr>
+      );
+
+      rows.push(row);
+    }
+
+    return rows;
+  }
 
   return (
     <table className="mt-[52px] w-[500px] table-fixed border-collapse border border-slate-400 p-8">
@@ -132,20 +167,9 @@ const Table = (props: TableProps) => {
           </th>
         </tr>
       </thead>
-      <tbody>
-        {data.ethereum.owners.map((owner, index) => {
-          return (
-            <tr key={owner}>
-              <td className="border border-slate-300  px-8 py-[18px]">{shortenAddress(owner)}</td>
-              <td className="border border-slate-300  px-8 py-[18px]">
-                {shortenAddress(data.polygonZKVM.owners[index])}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
+      <tbody>{getRows()}</tbody>
     </table>
   );
-};
+});
 
 export default memo(Sync);
