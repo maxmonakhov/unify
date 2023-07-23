@@ -17,7 +17,7 @@ const Details = (props: DetailsProps) => {
   };
 
   return (
-    <div className={className}>
+    <div className={clsx("relative flex flex-col items-center", className)}>
       <button className="flex items-center gap-2.5 text-violet" onClick={handleClick}>
         Details <ArrowIcon className={clsx("transition", { "rotate-180": state === "expanded" })} />
       </button>
