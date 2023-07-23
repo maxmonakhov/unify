@@ -11,7 +11,7 @@ import axios from "axios";
 
 const POLYGONZK_RPC = "https://rpc.public.zkevm-test.net";
 const ETHEREUM_RPC = "https://rpc.ankr.com/eth_goerli";
-const POLYGONZK_FACTORY = "0x7Ea090bd1E7165dCE45FF4510DcbB97EE87038e9";
+const POLYGONZK_FACTORY = "0x5147DaEbF0b779927c51c2527112A69d53cBCD67";
 const GELATO_RELAY_PZKEVM_KEY = "ZDw0hoNePTDvLNnastgVmz5iXYDiLjQEyJqWMT07vjE_"; //TODO: to env
 const POLYGONZK_BRIDGE = "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7";
 
