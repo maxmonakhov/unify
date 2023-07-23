@@ -24,7 +24,6 @@ const Welcome = (props: WelcomeProps) => {
   useEffect(() => {
     async function checkIfUserExists() {
       const result = await unifyChainClient.getModuleAddress();
-      console.log("--- await unifyChainClient.getModuleAddress(); result", result);
 
       if (typeof result === "string") {
         setState(State.HasAccount);
@@ -37,16 +36,12 @@ const Welcome = (props: WelcomeProps) => {
     void checkIfUserExists();
   }, [push, unifyChainClient]);
 
-  // //TODO: remove
-  // setTimeout(() => {
-  //   void push("./sync");
-  // }, 2000);
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center">
       <LogoWithText />
       <p className="mt-5 max-w-[600px] text-center">
-        Welcome to Unify. Unify will make your existing AA for cross-chain. You can install Unify in one click!
+        Welcome to Unify. Unify will make your existing Account Abstraction for cross-chain. You can
+        install Unify in one click!
       </p>
 
       <div className="mt-10">
