@@ -1,38 +1,49 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Project `Unify` (Account Abstraction)
 
-## Getting Started
+## Frontend for ETHGlobal hackathon
 
-First, run the development server:
+> 🎉 Winner of the track "Polygon — 🥇 Best LxLy Bridge Extension"
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+Check out our project page on ETHGlobal site
+https://ethglobal.com/showcase/unify-make-your-aa-cross-chain-a4x7h
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Description
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+Account Abstraction is the future of web3 wallets, but they have a big problem. If you have an
+Account Abstraction in several networks, they can’t communicate with each other. It's a problem when
+you want to change ownership or sensitive settings. Unify helps Account Abstraction projects make
+their Account Abstraction cross-chain.
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Tech
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+Ethereum, Polygon zkEVM and Gnosis Safe
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
-## Learn More
+## Links
 
-To learn more about Next.js, take a look at the following resources:
+Safe App (Code): https://github.com/maxmonakhov/unify (this repo)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Contracts: https://github.com/elshan-eth/unify-contracts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Safe App URL: https://unify-inky.vercel.app/
 
-## Deploy on Vercel
+## DEMO (Flow for testing)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Create a [Safe](https://safe.global) with several owners
+2. Open Custom Apps in your Safe Web Wallet
+3. Enter https://unify-inky.vercel.app/ in the URL for the Safe App
+4. Follow the steps in the Unify Safe App. One step can run up to 5 minutes, so don't turn off the application.
+5. Change owners in Safe Web Wallet
+6. Open the Unify Safe App and call sync. This may take up to 15 minutes.
+7. Finish. Your account is synced 🚀
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+If you had several Safe accounts without Unify on, for example, 10 L2 chains, you would need to make 10 clicks and transactions. With Unify, just **one** transaction is enough to update the data for all your L2.
+
+## Screenshots
+![](./docs/screenshots/ETHGlobal.png)
+
+![](./docs/screenshots/zkEVM.png)
+
+![](./docs/screenshots/synced-transactions.png)
+
+![](docs/screenshots/fun.jpg)
